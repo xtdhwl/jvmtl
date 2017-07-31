@@ -146,12 +146,149 @@ This function will be called by the VM when the library is about to be unloaded.
 JAVA_TOOL_OPTIONS
 
 Since the command-line cannot always be accessed or modified, for example in embedded VMs or simply VMs launched deep within scripts, a JAVA_TOOL_OPTIONS variable is provided so that agents may be launched in these cases.
+由于命令行不能总是被访问或修改，例如在嵌入式虚拟机中，或简单地在脚本中深入启动的虚拟机，提供了一个JAVA_TOOL_OPTIONS变量，以便在这些情况下启动代理。
 Platforms which support environment variables or other named strings, may support the JAVA_TOOL_OPTIONS variable. This variable will be broken into options at white-space boundaries. White-space characters include space, tab, carriage-return, new-line, vertical-tab, and form-feed. Sequences of white-space characters are considered equivalent to a single white-space character. No white-space is included in the options unless quoted. Quoting is as follows:
+支持环境变量或其他命名字符串的平台可能支持JAVA_TOOL_OPTIONS变量。 该变量将被分解为空白边界的选项。 空白字符包括空格，制表符，回车符，新行，垂直标签和表单。 白空格字符的序列被认为等同于单个空格字符。 除非引用，否则选项中不包括空格。 引用如下：
 All characters enclosed between a pair of single quote marks (''), except a single quote, are quoted.
+引用一个单引号（''）之外的所有字符，除单引号之外。
 Double quote characters have no special meaning inside a pair of single quote marks.
+双引号字符在一对单引号内没有特殊意义。
 All characters enclosed between a pair of double quote marks (""), except a double quote, are quoted.
+引用双引号之外的所有双引号（“”）之间的字符。
 Single quote characters have no special meaning inside a pair of double quote marks.
+单引号在一对双引号内没有特殊的含义。
 A quoted part can start or end anywhere in the variable.
+引用的部分可以在变量的任何位置开始或结束。
 White-space characters have no special meaning when quoted -- they are included in the option like any other character and do not mark white-space boundaries.
+引用时，空白字符没有特殊含义 - 它们与任何其他字符一样包含在选项中，并且不标记空白字符边界。
 The pair of quote marks is not included in the option.
+该选项中不包含该引号。
 JNI_CreateJavaVM (in the JNI Invocation API) will prepend these options to the options supplied in its JavaVMInitArgs argument. Platforms may disable this feature in cases where security is a concern; for example, the Reference Implementation disables this feature on Unix systems when the effective user or group ID differs from the real ID. This feature is intended to support the initialization of tools -- specifically including the launching of native or Java programming language agents. Multiple tools may wish to use this feature, so the variable should not be overwritten, instead, options should be appended to the variable. Note that since the variable is processed at the time of the JNI Invocation API create VM call, options processed by a launcher (e.g., VM selection options) will not be handled.
+JNI_CreateJavaVM（在JNI Invocation API中）将为这些选项提供其JavaVMInitArgs参数中提供的选项。 在担心安全问题的情况下，平台可能会禁用此功能; 例如，当有效用户或组ID与实际ID不同时，参考实施将在Unix系统上禁用此功能。 此功能旨在支持工具的初始化，特别是启动本地或Java编程语言代理。 多个工具可能希望使用此功能，因此该变量不应被覆盖，而应将选项附加到该变量。 请注意，由于在JNI Invocation API时处理变量以创建VM呼叫，因此不会处理由启动器处理的选项（例如，VM选择选项）。
+
+Environments
+环境
+The JVM TI specification supports the use of multiple simultaneous JVM TI agents. Each agent has its own JVM TI environment. That is, the JVM TI state is separate for each agent - changes to one environment do not affect the others. The state of a JVM TI environment includes:
+JVM TI规范支持使用多个同时进行的JVM TI代理。 每个代理都有自己的JVM TI环境。 也就是说，JVM TI状态对于每个代理是分开的 - 对一个环境的更改不会影响其他环境。 JVM TI环境的状态包括：
+the event callbacks
+事件回调
+the set of events which are enabled
+启用的事件集
+the capabilities
+能力
+the memory allocation/deallocation hooks
+内存分配/释放钩子
+Although their JVM TI state is separate, agents inspect and modify the shared state of the VM, they also share the native environment in which they execute. As such, an agent can perturb the results of other agents or cause them to fail. It is the responsibility of the agent writer to specify the level of compatibility with other agents. JVM TI implementations are not capable of preventing destructive interactions between agents. Techniques to reduce the likelihood of these occurrences are beyond the scope of this document.
+虽然他们的JVM TI状态是分开的，但代理检查和修改VM的共享状态，它们也共享它们执行的本地环境。 因此，代理可以扰乱其他代理的结果或导致其失败。 代理作者有责任指定与其他代理商的兼容性级别。 JVM TI实现不能防止代理之间的破坏性交互。 减少这些事件的可能性的技术超出了本文件的范围。
+An agent creates a JVM TI environment by passing a JVM TI version as the interface ID to the JNI Invocation API function GetEnv. See Accessing JVM TI Functions for more details on the creation and use of JVM TI environments. Typically, JVM TI environments are created by calling GetEnv from Agent_OnLoad.
+代理创建JVMTI环境通过JNI接口API中GetEnv函数指定JVMTI版本号来创建.有关创建和使用JVM TI环境的更多详细信息，请参阅访问JVM TI功能。 通常，通过从Agent_OnLoad调用GetEnv创建JVM TI环境。
+
+Bytecode Instrumentation
+字节码
+This interface does not include some events that one might expect in an interface with profiling support. Some examples include object allocation events and full speed method enter and exit events. The interface instead provides support for bytecode instrumentation, the ability to alter the Java virtual machine bytecode instructions which comprise the target program. Typically, these alterations are to add "events" to the code of a method - for example, to add, at the beginning of a method, a call to MyProfiler.methodEntered(). Since the changes are purely additive, they do not modify application state or behavior. Because the inserted agent code is standard bytecodes, the VM can run at full speed, optimizing not only the target program but also the instrumentation. If the instrumentation does not involve switching from bytecode execution, no expensive state transitions are needed. The result is high performance events. This approach also provides complete control to the agent: instrumentation can be restricted to "interesting" portions of the code (e.g., the end user's code) and can be conditional. Instrumentation can run entirely in Java programming language code or can call into the native agent. Instrumentation can simply maintain counters or can statistically sample events.
+此接口不包括在具有分析支持的界面中可能期望的某些事件。一些示例包括对象分配事件和全速方法的进入和退出事件。该接口代替提供对字节码检测的支持，能够改变构成目标程序的Java虚拟机字节码指令。通常，这些更改是将“事件”添加到方法的代码中 - 例如，在方法开头添加对MyProfiler.methodEntered（）的调用。由于这些更改纯粹是加法的，它们不会修改应用程序状态或行为。由于插入的代理代码是标准字节码，VM可以全速运行，不仅优化目标程序，还优化了仪器。如果仪器不涉及从字节码执行切换，则不需要昂贵的状态转换。结果是高性能事件。该方法还为代理提供完全的控制：仪器可以限于代码的“有趣”部分（例如，最终用户的代码），并且可以是有条件的。仪器可以完全以Java编程语言代码运行，也可以调用本机代理。仪器可以简单地维护计数器或者可以统计地采样事件。
+Instrumentation can be inserted in one of three ways:
+仪器可以通过以下三种方式之一插入：
+Static Instrumentation: The class file is instrumented before it is loaded into the VM - for example, by creating a duplicate directory of *.class files which have been modified to add the instrumentation. This method is extremely awkward and, in general, an agent cannot know the origin of the class files which will be loaded.
+静态仪器：在将文件加载到VM中之前，类文件进行了检测 - 例如，通过创建已经修改以添加仪器的* .class文件的重复目录。 这种方法非常尴尬，一般来说，代理不能知道将要加载的类文件的起源。
+Load-Time Instrumentation: When a class file is loaded by the VM, the raw bytes of the class file are sent for instrumentation to the agent. The ClassFileLoadHook event, triggered by the class load, provides this functionality. This mechanism provides efficient and complete access to one-time instrumentation.
+加载时间测试：当虚拟机加载类文件时，发送类文件的原始字节用于代理程序。 由类加载触发的ClassFileLoadHook事件提供了此功能。 这种机制提供了一次性仪器的高效和完整的访问。
+Dynamic Instrumentation: A class which is already loaded (and possibly even running) is modified. This optional feature is provided by the ClassFileLoadHook event, triggered by calling the RetransformClasses function. Classes can be modified multiple times and can be returned to their original state. The mechanism allows instrumentation which changes during the course of execution.
+The class modification functionality provided in this interface is intended to provide a mechanism for instrumentation (the ClassFileLoadHook event and the RetransformClasses function) and, during development, for fix-and-continue debugging (the RedefineClasses function).
+动态仪器：已经加载（甚至可能甚至运行）的类被修改。 该可选功能由ClassFileLoadHook事件提供，通过调用RetransformClasses函数触发。 类可以修改多次，可以恢复到原来的状态。 该机制允许在执行过程中发生变化的仪器。
+此接口中提供的类修改功能旨在提供一种用于检测的机制（ClassFileLoadHook事件和RetransformClasses函数），并在开发过程中提供修复和继续调试（RedefineClasses函数）。
+Care must be taken to avoid perturbing dependencies, especially when instrumenting core classes. For example, an approach to getting notification of every object allocation is to instrument the constructor on Object. Assuming that the constructor is initially empty, the constructor could be changed to:
+必须注意避免干扰依赖，特别是在核心课程时。 例如，获取每个对象分配的通知的方法是在Object上调用构造函数。 假设构造函数最初是空的，构造函数可以改为：
+      public Object() {
+        MyProfiler.allocationTracker(this);
+      }
+
+However, if this change was made using the ClassFileLoadHook event then this might impact a typical VM as follows: the first created object will call the constructor causing a class load of MyProfiler; which will then cause object creation, and since MyProfiler isn't loaded yet, infinite recursion; resulting in a stack overflow. A refinement of this would be to delay invoking the tracking method until a safe time. For example, trackAllocations could be set in the handler for the VMInit event.
+但是，如果使用ClassFileLoadHook事件进行此更改，则可能会影响典型的VM，如下所示：第一个创建的对象将调用构造函数，导致MyProfiler的类加载; 这将导致对象创建，并且由于MyProfiler尚未加载，无限递归; 导致堆栈溢出。 这样做的改进将是延迟调用跟踪方法直到安全的时间。 例如，可以在VMInit事件的处理程序中设置trackAllocations。
+      static boolean trackAllocations = false;
+
+      public Object() {
+        if (trackAllocations) {
+          MyProfiler.allocationTracker(this);
+        }
+      }
+
+The SetNativeMethodPrefix allows native methods to be instrumented by the use of wrapper methods.
+SetNativeMethodPrefix允许使用包装方法对本机方法进行检测。
+
+Modified UTF-8 String Encoding
+UTF-8字符编码修改
+JVM TI uses modified UTF-8 to encode character strings. This is the same encoding used by JNI. Modified UTF-8 differs from standard UTF-8 in the representation of supplementary characters and of the null character. See the Modified UTF-8 Strings section of the JNI specification for details.
+JVM TI使用修改的UTF-8来编码字符串。 这与JNI使用的编码相同。 修改的UTF-8与标准UTF-8在补充字符和空字符的表示中不同。 有关详细信息，请参阅JNI规范的修改后的UTF-8字符串部分。
+Specification Context
+规格上下文
+Since this interface provides access to the state of applications running in the Java virtual machine; terminology refers to the Java platform and not the native platform (unless stated otherwise). For example:
+由于该接口提供对在Java虚拟机中运行的应用程序的状态的访问; 术语是指Java平台，而不是本机平台（除非另有说明）。 例如：
+"thread" means Java programming language thread.
+“线程”是指Java编程语言线程。
+"stack frame" means Java virtual machine stack frame.
+“堆栈帧”是指Java虚拟机堆栈帧。
+"class" means Java programming language class.
+“类”是指Java编程语言类。
+"heap" means Java virtual machine heap.
+“堆”是指Java虚拟机堆。
+"monitor" means Java programming language object monitor.
+“监视”是指Java编程语言对象监视器。
+Sun, Sun Microsystems, the Sun logo, Java, and JVM are trademarks or registered trademarks of Oracle and/or its affiliates, in the U.S. and other countries.
+Sun，Sun Microsystems，Sun徽标，Java和JVM是Oracle和/或其附属公司在美国和其他国家/地区的商标或注册商标。
+
+
+
+
+Functions
+功能
+Accessing Functions
+访问功能
+Native code accesses JVM TI features by calling JVM TI functions. Access to JVM TI functions is by use of an interface pointer in the same manner as Java Native Interface (JNI) functions are accessed. The JVM TI interface pointer is called the environment pointer.
+本地代码通过调用JVM TI功能访问JVM TI功能。 访问JVM的TI功能是通过使用接口指针，与访问Java Native Interface（JNI）功能的方法相同。 JVM TI接口指针称为环境指针。
+An environment pointer is a pointer to an environment and has the type jvmtiEnv*. An environment has information about its JVM TI connection. The first value in the environment is a pointer to the function table. The function table is an array of pointers to JVM TI functions. Every function pointer is at a predefined offset inside the array.
+环境指针是指向环境的指针，并且具有类型jvmtiEnv *。 环境中有关于其JVM TI连接的信息。 环境中的第一个值是指向函数表的指针。 函数表是一组指向JVM TI函数的指针。 每个函数指针位于数组中的预定义偏移量。
+When used from the C language: double indirection is used to access the functions; the environment pointer provides context and is the first parameter of each function call; for example:
+当从C语言使用时：双重间接用于访问功能; 环境指针提供上下文，是每个函数调用的第一个参数; 例如：
+jvmtiEnv *jvmti;
+...
+jvmtiError err = (*jvmti)->GetLoadedClasses(jvmti, &class_count, &classes);
+
+When used from the C++ language: functions are accessed as member functions of jvmtiEnv; the environment pointer is not passed to the function call; for example:
+当从C ++语言使用时：函数作为jvmtiEnv的成员函数进行访问; 环境指针不传递给函数调用; 例如：
+jvmtiEnv *jvmti;
+...
+jvmtiError err = jvmti->GetLoadedClasses(&class_count, &classes);
+
+Unless otherwise stated, all examples and declarations in this specification use the C language.
+A JVM TI environment can be obtained through the JNI Invocation API GetEnv function:
+除非另有说明，本说明书中的所有示例和声明都使用C语言。
+可以通过JNI Invocation API GetEnv函数获取JVM TI环境：
+jvmtiEnv *jvmti;
+...
+(*jvm)->GetEnv(jvm, &jvmti, JVMTI_VERSION_1_0);
+
+Each call to GetEnv creates a new JVM TI connection and thus a new JVM TI environment. The version argument of GetEnv must be a JVM TI version. The returned environment may have a different version than the requested version but the returned environment must be compatible. GetEnv will return JNI_EVERSION if a compatible version is not available, if JVM TI is not supported or JVM TI is not supported in the current VM configuration. Other interfaces may be added for creating JVM TI environments in specific contexts. Each environment has its own state (for example, desired events, event handling functions, and capabilities). An environment is released with DisposeEnvironment. Thus, unlike JNI which has one environment per thread, JVM TI environments work across threads and are created dynamically.
+每次调用GetEnv创建一个新的JVM TI连接，从而创建一个新的JVM TI环境。 GetEnv的版本参数必须是JVM TI版本。 返回的环境可能具有与请求的版本不同的版本，但返回的环境必须兼容。 如果兼容版本不可用，则如果不支持JVM TI或当前VM配置不支持JVM TI，GetEnv将返回JNI_EVERSION。 可以添加其他接口用于在特定上下文中创建JVM TI环境。 每个环境都有自己的状态（例如，所需的事件，事件处理功能和功能）。 DisposeEnvironment发布环境。 因此，与每个线程有一个环境的JNI不同，JVM TI环境可以跨线程工作，并且是动态创建的。
+
+Function Return Values
+功能返回值
+JVM TI functions always return an error code via the jvmtiError function return value. Some functions can return additional values through pointers provided by the calling function. In some cases, JVM TI functions allocate memory that your program must explicitly deallocate. This is indicated in the individual JVM TI function descriptions. Empty lists, arrays, sequences, etc are returned as NULL.
+JVM TI函数总是通过jvmtiError函数返回值返回错误代码。 一些函数可以通过调用函数提供的指针返回附加值。 在某些情况下，JVM TI功能分配您的程序必须显式解除分配的内存。 这在单个JVM TI功能描述中指示。 空列表，数组，序列等返回为NULL。
+In the event that the JVM TI function encounters an error (any return value other than JVMTI_ERROR_NONE) the values of memory referenced by argument pointers is undefined, but no memory will have been allocated and no global references will have been allocated. If the error occurs because of invalid input, no action will have occurred.
+如果JVM TI功能遇到错误（除JVMTI_ERROR_NONE之外的任何返回值），参数指针引用的内存值未定义，但不会分配任何内存，并且不会分配全局引用。 如果由于输入无效而发生错误，则不会发生任何操作。
+
+Managing JNI Object References
+管理JNI对象引用
+JVM TI functions identify objects with JNI references (jobject and jclass) and their derivatives (jthread and jthreadGroup). References passed to JVM TI functions can be either global or local, but they must be strong references. All references returned by JVM TI functions are local references--these local references are created during the JVM TI call. Local references are a resource that must be managed (see the JNI Documentation). When threads return from native code all local references are freed. Note that some threads, including typical agent threads, will never return from native code. A thread is ensured the ability to create sixteen local references without the need for any explicit management. For threads executing a limited number of JVM TI calls before returning from native code (for example, threads processing events), it may be determined that no explicit management is needed. However, long running agent threads will need explicit local reference management--usually with the JNI functions PushLocalFrame and PopLocalFrame. Conversely, to preserve references beyond the return from native code, they must be converted to global references. These rules do not apply to jmethodID and jfieldID as they are not jobjects.
+Prerequisite State for Calling Functions
+JVM TI功能使用JNI引用（jobject和jclass）及其派生（jthread和jthreadGroup）来标识对象。传递给JVM TI函数的引用可以是全局或本地的，但它们必须是强引用。 JVM TI函数返回的所有引用都是本地引用 - 这些本地引用在JVM TI调用期间创建。本地引用是必须被管理的资源（参见JNI文档）。当线程从本地代码返回时，所有本地引用都被释放。请注意，一些线程（包括典型的代理线程）永远不会从本地代码返回。线程被确保能够创建十六个本地引用，而不需要任何明确的管理。对于从本地代码（例如，线程处理事件）返回之前执行有限数量的JVM TI调用的线程，可以确定不需要显式管理。但是，长时间运行的代理线程将需要显式的本地引用管理 - 通常使用JNI函数PushLocalFrame和PopLocalFrame。相反，为了保留超出本地代码返回的引用，它们必须被转换为全局引用。这些规则不适用于jmethodID和jfieldID，因为它们不是jobjects。
+调用功能的前提条件
+
+Unless the function explicitly states that the agent must bring a thread or the VM to a particular state (for example, suspended), the JVM TI implementation is responsible for bringing the VM to a safe and consistent state for performing the function.
+Exceptions and Functions
+除非函数明确声明代理必须将线程或VM带到特定状态（例如，挂起），否则JVM TI实现负责将VM置于安全和一致的状态以执行该功能。
+异常和功能
+
+JVM TI functions never throw exceptions; error conditions are communicated via the function return value. Any existing exception state is preserved across a call to a JVM TI function. See the Java Exceptions section of the JNI specification for information on handling exceptions.
+JVM TI功能从不抛出异常; 错误条件通过函数返回值传递。 任何现有的异常状态都会在对JVM TI功能的调用中保留。 有关处理异常的信息，请参阅JNI规范的Java异常部分。
