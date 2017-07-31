@@ -1,0 +1,157 @@
+如何编译静态链接库？
+＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+JVMTM Tool Interface(java 虚拟机工具接口)
+Version 1.2
+
+What is the JVM Tool Interface?
+什么是ｊａｖａ虚拟工具接口
+The JVM Tool Interface (JVM TI) is a programming interface used by development and monitoring tools. It provides both a way to inspect the state and to control the execution of applications running in the JavaTM virtual machine (VM).
+JVMTM工具接口（JVM TI）是开发和监控工具使用的编程接口。 它提供了一种检查状态并控制在JavaTM虚拟机（VM）中运行的应用程序的执行的方法。
+JVM TI is intended to provide a VM interface for the full breadth of tools that need access to VM state, including but not limited to: profiling, debugging, monitoring, thread analysis, and coverage analysis tools.
+JVM TI旨在为需要访问VM状态的全面工具提供VM接口，包括但不限于：分析，调试，监视，线程分析和覆盖分析工具。
+JVM TI may not be available in all implementations of the JavaTM virtual machine.
+JVM TI可能不适用于JavaTM虚拟机的所有实现。
+JVM TI is a two-way interface. A client of JVM TI, hereafter called an agent, can be notified of interesting occurrences through events. JVM TI can query and control the application through many functions, either in response to events or independent of them.
+JVM TI是一个双向接口。 客户端通过JVMTI设置代理，可以通过通知处理感兴趣的事件。 JVMTI可以通过许多功能来查询和控制应用程序，无论是响应事件还是独立于它们。
+Agents run in the same process with and communicate directly with the virtual machine executing the application being examined. This communication is through a native interface (JVM TI). The native in-process interface allows maximal control with minimal intrusion on the part of a tool. Typically, agents are relatively compact. They can be controlled by a separate process which implements the bulk of a tool's function without interfering with the target application's normal execution.
+代理程序在相同的进程中运行通过通信运行和检查虚拟机应用。 这种通信是通过一个本机接口（JVM TI）。 它们可以通过单独的进程控制，该进程实现了工具功能的大部分，而不会干扰目标应用程序的正常执行。
+
+Architecture
+架构
+Tools can be written directly to JVM TI or indirectly through higher level interfaces. The Java Platform Debugger Architecture includes JVM TI, but also contains higher-level, out-of-process debugger interfaces. The higher-level interfaces are more appropriate than JVM TI for many tools. For more information on the Java Platform Debugger Architecture, see the Java Platform Debugger Architecture website.
+工具可以直接写入JVM TI，也可以通过更高级别的接口间接写入。 Java平台调试器架构包括JVM TI，还包含更高级别的进程外调试器接口。 对于许多工具，更高级别的接口比JVM TI更合适。 有关Java Platform Debugger Architecture的更多信息，请参阅Java Platform Debugger Architecture网站。
+
+Writing Agents
+写代理
+Agents can be written in any native language that supports C language calling conventions and C or C++ definitions.
+代理可以用支持C语言调用约定和C或C ++定义的任何本地语言编写。
+The function, event, data type, and constant definitions needed for using JVM TI are defined in the include file jvmti.h. To use these definitions add the J2SETM include directory to your include path and add
+使用JVM TI所需的功能，事件，数据类型和常量定义在jvmti.h头文件中。 要使用这些定义，将J2SETM include目录添加
+#include <jvmti.h>
+
+to your source code.
+你的代码中
+
+Deploying Agents
+部署代理
+An agent is deployed in a platform specific manner but is typically the platform equivalent of a dynamic library. On the WindowsTM operating system, for example, an agent library is a "Dynamic Linked Library" (DLL). On the SolarisTM Operating Environment, an agent library is a shared object (.so file).
+代理以平台特定的方式部署，但通常是与动态库相当的平台。 例如，在Windows操作系统上，代理库是“动态链接库”（DLL）。 在Solaris操作环境中，代理库是一个共享对象（.so文件）。
+An agent may be started at VM startup by specifying the agent library name using a command line option. Some implementations may support a mechanism to start agents in the live phase. The details of how this is initiated are implementation specific.
+可以通过使用命令行选项指定代理程序库名称，在虚拟机启动时启动代理。 一些实现可以支持在生存阶段启动代理的机制。 如何启动它的细节是具体的实现。
+
+
+Statically Linked Agents (since version 1.2.3)
+静态链接代理（自版本1.2.3起）
+A native JVMTI Agent may be statically linked with the VM. The manner in which the library and VM image are combined is implementation-dependent. An agent L whose image has been combined with the VM is defined as statically linked if and only if the agent exports a function called Agent_OnLoad_L.
+本地JVMTI代理可能与VM静态链接。 库和VM镜像的组合方式取决于实现。当代理使用静态链接库，虚拟机将之执行Agent_OnLoad_L函数。
+If a statically linked agent L exports a function called Agent_OnLoad_L and a function called Agent_OnLoad, the Agent_OnLoad function will be ignored. If an agent L is statically linked, an Agent_OnLoad_L function will be invoked with the same arguments and expected return value as specified for the Agent_OnLoad function. An agent L that is statically linked will prohibit an agent of the same name from being loaded dynamically.
+如果静态链接代理L导出名为Agent_OnLoad_L的函数和名为Agent_OnLoad的函数，则Agent_OnLoad函数将被忽略。 如果代理L静态链接，将使用与Agent_OnLoad函数相同的参数和预期返回值来调用Agent_OnLoad_L函数。 静态链接的代理L将禁止动态加载相同名称的代理。
+The VM will invoke the Agent_OnUnload_L function of the agent, if such a function is exported, at the same point during VM execution as it would have called the dynamic entry point Agent_OnUnLoad. A statically loaded agent cannot be unloaded. The Agent_OnUnload_L function will still be called to do any other agent shutdown related tasks. If a statically linked agent L exports a function called Agent_OnUnLoad_L and a function called Agent_OnUnLoad, the Agent_OnUnLoad function will be ignored.
+虚拟机将在虚拟机执行期间与调用动态入口点Agent_OnUnLoad的同一点调用代理程序的Agent_OnUnload_L函数（如果这样的函数被导出）。 无法卸载静态加载代理。 Agent_OnUnload_L函数仍将被调用来执行任何其他代理关闭相关任务。 如果静态链接代理L导出名为Agent_OnUnLoad_L的函数和名为Agent_OnUnLoad的函数，则Agent_OnUnLoad函数将被忽略。
+If an agent L is statically linked, an Agent_OnAttach_L function will be invoked with the same arguments and expected return value as specified for the Agent_OnAttach function. If a statically linked agent L exports a function called Agent_OnAttach_L and a function called Agent_OnAttach, the Agent_OnAttach function will be ignored.
+如果代理L静态链接，将使用与为Agent_OnAttach函数指定的相同参数和预期返回值来调用Agent_OnAttach_L函数。 如果静态链接代理L导出名为Agent_OnAttach_L的函数和名为Agent_OnAttach的函数，则Agent_OnAttach函数将被忽略。
+
+Agent Command Line Options
+代理命令行选项
+The term "command-line option" is used below to mean options supplied in the JavaVMInitArgs argument to the JNI_CreateJavaVM function of the JNI Invocation API.
+下面使用术语“命令行选项”来表示JNI调用API的JNI_CreateJavaVM函数的JavaVMInitArgs参数中提供的选项。
+One of the two following command-line options is used on VM startup to properly load and run agents. These arguments identify the library containing the agent as well as an options string to be passed in at startup.
+VM启动时使用以下两个命令行选项之一来正确加载和运行代理。 这些参数标识包含代理的库以及启动时要传递的选项字符串。
+-agentlib:<agent-lib-name>=<options>
+The name following -agentlib: is the name of the library to load. Lookup of the library, both its full name and location, proceeds in a platform-specific manner. Typically, the <agent-lib-name> is expanded to an operating system specific file name. The <options> will be passed to the agent on start-up. For example, if the option -agentlib:foo=opt1,opt2 is specified, the VM will attempt to load the shared library foo.dll from the system PATH under WindowsTM or libfoo.so from the LD_LIBRARY_PATH under the SolarisTM operating environment. If the agent library is statically linked into the executable then no actual loading takes place.
+-agentlib后面的名称是要加载的库的名称。库的名称与路径根据平台特定的方式进行。 通常，将<agent-lib-name>扩展为操作系统特定的文件名。 <options>将在启动时传递给代理。 例如，如果指定了选项-agentlib：foo = opt1，opt2，虚拟机在Window系统PATH环境变量下查找foo.dll动态链接库，在Solaris系统LD_LIBRARY_PATH环境变量下查找foo.so动态链接库. 如果代理库静态链接到可执行文件中，则不会发生实际的加载。
+-agentpath:<path-to-agent>=<options>
+The path following -agentpath: is the absolute path from which to load the library. No library name expansion will occur. The <options> will be passed to the agent on start-up. For example, if the option -agentpath:c:\myLibs\foo.dll=opt1,opt2 is specified, the VM will attempt to load the shared library c:\myLibs\foo.dll. If the agent library is statically linked into the executable then no actual loading takes place.
+-agentpath后面的路径：是加载库的绝对路径。 不会对库名称进行扩充。 <options>将在启动时传递给代理。 例如，如果选项-agentpath:c:\myLibs\foo.dll=opt1,opt2被指定，VM将尝试加载共享库c:\myLibs\foo.dll。 如果代理库静态链接到可执行文件中，则不会发生实际的加载。
+For a dynamic shared library agent, the start-up routine Agent_OnLoad in the library will be invoked. If the agent library is statically linked into the executable then the system will attempt to invoke the Agent_OnLoad_<agent-lib-name> entry point where <agent-lib-name> is the basename of the agent. In the above example -agentpath:c:\myLibs\foo.dll=opt1,opt2, the system will attempt to find and call the Agent_OnLoad_foo start-up routine.
+对于加载动态链接库，将调用库中Agent_OnLoad方法启动。 如果代理程序库是静态链接到可执行文件中，则系统将尝试调用Agent_OnLoad_ <agent-lib-name>入口点，其中<agent-lib-name>是代理的基本名称。 在上述示例-agentpath:c:\myLibs\foo.dll=opt1,opt2，系统将尝试查找并调用Agent_OnLoad_foo方法启动。
+Libraries loaded with -agentlib: or -agentpath: will be searched for JNI native method implementations to facilitate the use of Java programming language code in tools, as is needed for bytecode instrumentation.
+加载了-agentlib或-agentpath的库将被搜索JNI本机方法实现，以便在工具中使用Java编程语言代码，这是按字节码检测所需要的。
+The agent libraries will be searched after all other libraries have been searched (agents wishing to override or intercept the native method implementations of non-agent methods can use the NativeMethodBind event).
+在搜索所有其他库之后，将搜索代理程序库（希望覆盖或拦截非代理方法的本地方法实现的代理可以使用NativeMethodBind事件）。
+These switches do the above and nothing more - they do not change the state of the VM or JVM TI. No command line options are needed to enable JVM TI or aspects of JVM TI, this is handled programmatically by the use of capabilities.
+这些交换机执行上述操作，没有更多 - 它们不会更改VM或JVM TI的状态。 不需要命令行选项来启用JVM TI或JVM TI的各个方面，这是通过使用功能以编程方式处理的。
+
+Agent Start-Up
+启动代理
+The VM starts each agent by invoking a start-up function. If the agent is started in the OnLoad phase the function Agent_OnLoad or Agent_OnLoad_L for statically linked agents will be invoked. If the agent is started in the live phase the function Agent_OnAttach or Agent_OnAttach_L for statically linked agents will be invoked. Exactly one call to a start-up function is made per agent.
+VM通过调用启动函数来启动每个代理。 如果代理在OnLoad阶段启动，则将调用静态链接代理程序的Agent_OnLoad或Agent_OnLoad_L函数。 如果代理在实时阶段启动，则将调用静态链接代理程序的Agent_OnAttach或Agent_OnAttach_L函数。 每个代理人完全调用了启动功能。
+
+Agent Start-Up (OnLoad phase)
+启动代理(OnLoad 阶段)
+If an agent is started during the OnLoad phase then its agent library must export a start-up function with the following prototype:
+如果代理在OnLoad阶段启动，则其代理程序库必须使用以下原型导出启动函数：
+JNIEXPORT jint JNICALL
+Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
+Or for a statically linked agent named 'L':
+或者以静态链接库代理
+JNIEXPORT jint JNICALL
+Agent_OnLoad_L(JavaVM *vm, char *options, void *reserved)
+The VM will start the agent by calling this function. It will be called early enough in VM initialization that:
+虚拟机将通过调用此函数启动代理。 在VM初始化中早期：
+
+system properties may be set before they have been used in the start-up of the VM
+可能在VM启动之前被使用系统属性
+the full set of capabilities is still available (note that capabilities that configure the VM may only be available at this time--see the Capability function section)
+完整的功能集仍然可用（请注意，配置VM的功能目前可能只能使用 - 请参阅功能部分）
+no bytecodes have executed
+没有执行字节码
+no classes have been loaded
+没有加载器
+no objects have been created
+没有创建任何对象
+
+The VM will call the Agent_OnLoad or Agent_OnLoad_<agent-lib-name> function with <options> as the second argument - that is, using the command-line option examples, "opt1,opt2" will be passed to the char *options argument of Agent_OnLoad. The options argument is encoded as a modified UTF-8 string. If =<options> is not specified, a zero length string is passed to options. The lifespan of the options string is the Agent_OnLoad or Agent_OnLoad_<agent-lib-name> call. If needed beyond this time the string or parts of the string must be copied. The period between when Agent_OnLoad is called and when it returns is called the OnLoad phase. Since the VM is not initialized during the OnLoad phase, the set of allowed operations inside Agent_OnLoad is restricted (see the function descriptions for the functionality available at this time). The agent can safely process the options and set event callbacks with SetEventCallbacks. Once the VM initialization event is received (that is, the VMInit callback is invoked), the agent can complete its initialization.
+虚拟机执行Agent_OnLoad或Agent_OnLoad_<agent-lib-name>函数中的<options>是第二个参数选择,利用命令行选择的例子,"opt1,opt2"将以char类型指针参数*options传递给Agent_OnLoad函数.这个options字符参数是经过UTF-8编码修改过的.如果=<options>没有定义,空字符串传递给选项,options字符串的周期是Agent_OnLoad或Agent_OnLoad_ <agent-lib-name>调用. 如果需要超出这个周期使用，字符串或字符串的部分必须被复制. 调用Agent_OnLoad和返回的时间间隔称为OnLoad阶段。 由于虚拟机在OnLoad阶段期间未初始化,Agent_OnLoad中允许的操作集合受到限制（请参阅此时可用功能的功能说明）. 代理可以安全地处理选项并使用SetEventCallbacks设置事件回调.一旦接收到VM初始化事件（即调用VMInit回调），代理可以完成其初始化。
+
+Rationale: Early startup is required so that agents can set the desired capabilities, many of which must be set before the VM is initialized. In JVMDI, the -Xdebug command-line option provided very coarse-grain control of capabilities. JVMPI implementations use various tricks to provide a single "JVMPI on" switch. No reasonable command-line option could provide the fine-grain of control required to balance needed capabilities vs performance impact. Early startup is also needed so that agents can control the execution environment - modifying the file system and system properties to install their functionality.
+解释:需要早期启动，以便代理可以设置所需的功能，其中许多功能必须在VM初始化之前进行设置。在JVMDI中，-Xdebug命令行选项提供了非常粗粒度的功能控制。JVMPI实现使用各种技巧来提供单个“JVMPI on”开关。没有合理的命令行选项可以提供平衡所需能力与性能影响所需的精细控制。还需要早期启动，以便代理可以控制执行环境 - 修改文件系统和系统属性以安装其功能。
+
+The return value from Agent_OnLoad or Agent_OnLoad_<agent-lib-name> is used to indicate an error. Any value other than zero indicates an error and causes termination of the VM.
+来自Agent_OnLoad或Agent_OnLoad_ <agent-lib-name>的返回值用于指示错误。 除零之外的任何值都表示错误，并导致VM的终止。
+
+Agent Start-Up (Live phase)
+启动代理(活动阶段)
+A VM may support a mechanism that allows agents to be started in the VM during the live phase. The details of how this is supported, are implementation specific. For example, a tool may use some platform specific mechanism, or implementation specific API, to attach to the running VM, and request it start a given agent.
+虚拟机可能支持在实时阶段允许代理在VM中启动的机制。 有关如何支持的细节是具体实现。 例如，一个工具可能会使用一些特定于平台的机制，或实现特定的API来附加到正在运行的VM，并请求它启动一个给定的代理。
+
+If an agent is started during the live phase then its agent library must export a start-up function with the following prototype:
+如果代理在实时阶段启动，则其代理程序库必须使用以下原型导出启动函数：
+JNIEXPORT jint JNICALL
+Agent_OnAttach(JavaVM* vm, char *options, void *reserved)
+Or for a statically linked agent named 'L':
+或者静态库代理函数
+JNIEXPORT jint JNICALL
+Agent_OnAttach_L(JavaVM* vm, char *options, void *reserved)
+The VM will start the agent by calling this function. It will be called in the context of a thread that is attached to the VM. The first argument <vm> is the Java VM. The <options> argument is the startup options provided to the agent. <options> is encoded as a modified UTF-8 string. If startup options were not provided, a zero length string is passed to options. The lifespan of the options string is the Agent_OnAttach or Agent_OnAttach_<agent-lib-name> call. If needed beyond this time the string or parts of the string must be copied.
+虚拟机将通过调用此函数启动代理。它将在连接到VM的线程的上下文中被调用。第一个参数<vm>是Java VM。 <options>参数是提供给代理的启动选项.<options> is encoded as a modified UTF-8 string.如果未提供启动选项，则将空字符串传递给选项。 选项字符串的周期是Agent_OnAttach或Agent_OnAttach_ <agent-lib-name>调用。 如果需要超出这个周期，字符串或字符串的部分必须被复制。
+Note that some capabilities may not be available in the live phase.
+请注意，实时阶段可能无法使用某些功能。
+The Agent_OnAttach or Agent_OnAttach_<agent-lib-name > function initializes the agent and returns a value to the VM to indicate if an error occurred. Any value other than zero indicates an error. An error does not cause the VM to terminate. Instead the VM ignores the error, or takes some implementation specific action -- for example it might print an error to standard error, or record the error in a system log.
+Agent_OnAttach或Agent_OnAttach_ <agent-lib-name>函数初始化代理并向VM返回一个值，以指示是否发生错误。 0以外的任何值都表示错误。 错误不会导致VM终止。 而是忽略该错误，或者采取一些实现特定的操作 - 例如它可能会将错误打印到标准错误，或在系统日志中记录错误。
+
+Agent Shutdown
+
+The library may optionally export a shutdown function with the following prototype:
+库可以选择导出具有以下原型的关闭功能：
+JNIEXPORT void JNICALL
+Agent_OnUnload(JavaVM *vm)
+Or for a statically linked agent named 'L':
+或者静态链接库函数
+JNIEXPORT void JNICALL
+Agent_OnUnload_L(JavaVM *vm)
+This function will be called by the VM when the library is about to be unloaded. The library will be unloaded (unless it is statically linked into the executable) and this function will be called if some platform specific mechanism causes the unload (an unload mechanism is not specified in this document) or the library is (in effect) unloaded by the termination of the VM whether through normal termination or VM failure, including start-up failure. Uncontrolled shutdown is, of couse, an exception to this rule. Note the distinction between this function and the VM Death event: for the VM Death event to be sent, the VM must have run at least to the point of initialization and a valid JVM TI environment must exist which has set a callback for VMDeath and enabled the event. None of these are required for Agent_OnUnload or Agent_OnUnload_<agent-lib-name> and this function is also called if the library is unloaded for other reasons. In the case that a VM Death event is sent, it will be sent before this function is called (assuming this function is called due to VM termination). This function can be used to clean-up resources allocated by the agent.
+当该库即将卸载时，该函数将由VM调用。库将被卸载（除非它被静态链接到可执行文件中），并且如果某些平台特定的机制导致卸载（在本文档中未指定卸载机制）或者库（实际上）卸载，则该函数将被调用 VM的终止是否通过正常终止或VM故障，包括启动失败,当然，不受控制的停机是这个规则的例外。请注意此功能与VM死亡事件之间的区别：为了发送VM死亡事件，VM必须至少运行到初始化阶段，并且必须存在有效的JVM TI环境，该环境已为VMDeath设置回调并启用 事件。Agent_OnUnload或Agent_OnUnload_ <agent-lib-name>都不需要这些功能，如果库由于其他原因卸载，也会调用此函数。在发送VM死亡事件的情况下，将在调用此函数之前发送（假定由于VM终止而调用此函数）。 此功能可用于清理代理分配的资源。
+
+JAVA_TOOL_OPTIONS
+
+Since the command-line cannot always be accessed or modified, for example in embedded VMs or simply VMs launched deep within scripts, a JAVA_TOOL_OPTIONS variable is provided so that agents may be launched in these cases.
+Platforms which support environment variables or other named strings, may support the JAVA_TOOL_OPTIONS variable. This variable will be broken into options at white-space boundaries. White-space characters include space, tab, carriage-return, new-line, vertical-tab, and form-feed. Sequences of white-space characters are considered equivalent to a single white-space character. No white-space is included in the options unless quoted. Quoting is as follows:
+All characters enclosed between a pair of single quote marks (''), except a single quote, are quoted.
+Double quote characters have no special meaning inside a pair of single quote marks.
+All characters enclosed between a pair of double quote marks (""), except a double quote, are quoted.
+Single quote characters have no special meaning inside a pair of double quote marks.
+A quoted part can start or end anywhere in the variable.
+White-space characters have no special meaning when quoted -- they are included in the option like any other character and do not mark white-space boundaries.
+The pair of quote marks is not included in the option.
+JNI_CreateJavaVM (in the JNI Invocation API) will prepend these options to the options supplied in its JavaVMInitArgs argument. Platforms may disable this feature in cases where security is a concern; for example, the Reference Implementation disables this feature on Unix systems when the effective user or group ID differs from the real ID. This feature is intended to support the initialization of tools -- specifically including the launching of native or Java programming language agents. Multiple tools may wish to use this feature, so the variable should not be overwritten, instead, options should be appended to the variable. Note that since the variable is processed at the time of the JNI Invocation API create VM call, options processed by a launcher (e.g., VM selection options) will not be handled.
